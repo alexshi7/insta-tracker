@@ -1,9 +1,13 @@
 # filepath: /Users/alexshi/projects/src/app.py
-from flask import Flask, request, render_template, redirect, url_for
+from flask import Flask, request, render_template, session
 import json
 import os
+import tempfile
 
 app = Flask(__name__)
+app.secret_key = 'supersecretkey'  # Replace with a secure key
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = tempfile.mkdtemp()
 
 def load_json(file_path):
     with open(file_path, 'r') as file:
@@ -31,8 +35,8 @@ def index():
         followers_file = request.files['followers']
         following_file = request.files['following']
 
-        followers_path = os.path.join('uploads', followers_file.filename)
-        following_path = os.path.join('uploads', following_file.filename)
+        followers_path = os.path.join(tempfile.gettempdir(), followers_file.filename)
+        following_path = os.path.join(tempfile.gettempdir(), following_file.filename)
 
         followers_file.save(followers_path)
         following_file.save(following_path)
@@ -46,11 +50,23 @@ def index():
         unique_followers = set(followers_values) - set(following_values)
         unique_following = set(following_values) - set(followers_values)
 
-        return render_template('result.html', unique_followers=unique_followers, unique_following=unique_following)
+        # Store results in session
+        session['unique_followers'] = list(unique_followers)
+        session['unique_following'] = list(unique_following)
+
+        # Delete the temporary files
+        os.remove(followers_path)
+        os.remove(following_path)
+
+        return redirect(url_for('results'))
 
     return render_template('index.html')
 
+@app.route('/results')
+def results():
+    unique_followers = session.get('unique_followers', [])
+    unique_following = session.get('unique_following', [])
+    return render_template('result.html', unique_followers=unique_followers, unique_following=unique_following)
+
 if __name__ == '__main__':
-    if not os.path.exists('uploads'):
-        os.makedirs('uploads')
     app.run(debug=True)

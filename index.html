@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload JSON Files</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        form {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #results {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Upload JSON Files</h1>
+    <form id="upload-form">
+        <label for="followers">Followers JSON:</label>
+        <input type="file" id="followers" required><br><br>
+        <label for="following">Following JSON:</label>
+        <input type="file" id="following" required><br><br>
+        <button type="submit">Upload</button>
+    </form>
+    <div id="results">
+        <h2>Follow me, but I don't follow:</h2>
+        <ul id="unique-followers"></ul>
+        <h2>I follow, they don't follow back:</h2>
+        <ul id="unique-following"></ul>
+    </div>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const followersFile = document.getElementById('followers').files[0];
+            const followingFile = document.getElementById('following').files[0];
+
+            if (followersFile && followingFile) {
+                const followersReader = new FileReader();
+                const followingReader = new FileReader();
+
+                followersReader.onload = function (e) {
+                    const followersData = JSON.parse(e.target.result);
+                    const followersValues = extractValuesFollowers(followersData);
+
+                    followingReader.onload = function (e) {
+                        const followingData = JSON.parse(e.target.result);
+                        const followingValues = extractValuesFollowing(followingData);
+
+                        const uniqueFollowers = followersValues.filter(value => !followingValues.includes(value));
+                        const uniqueFollowing = followingValues.filter(value => !followersValues.includes(value));
+
+                        displayResults(uniqueFollowers, uniqueFollowing);
+                    };
+
+                    followingReader.readAsText(followingFile);
+                };
+
+                followersReader.readAsText(followersFile);
+            }
+        });
+
+        function extractValuesFollowers(data) {
+            const values = [];
+            data.forEach(entry => {
+                entry.string_list_data.forEach(stringListEntry => {
+                    values.push(stringListEntry.value);
+                });
+            });
+            return values;
+        }
+
+        function extractValuesFollowing(data) {
+            const values = [];
+            data.relationships_following.forEach(entry => {
+                entry.string_list_data.forEach(stringListEntry => {
+                    values.push(stringListEntry.value);
+                });
+            });
+            return values;
+        }
+
+        function displayResults(uniqueFollowers, uniqueFollowing) {
+            const uniqueFollowersList = document.getElementById('unique-followers');
+            const uniqueFollowingList = document.getElementById('unique-following');
+
+            uniqueFollowersList.innerHTML = '';
+            uniqueFollowingList.innerHTML = '';
+
+            uniqueFollowers.forEach(follower => {
+                const li = document.createElement('li');
+                li.textContent = follower;
+                uniqueFollowersList.appendChild(li);
+            });
+
+            uniqueFollowing.forEach(following => {
+                const li = document.createElement('li');
+                li.textContent = following;
+                uniqueFollowingList.appendChild(li);
+            });
+        }
+    </script>
+</body>
+
+</html>
